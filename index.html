@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Capacitaciones | Conexión Supabase</title>
+
+    <!-- Google Fonts: Inter y JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Configuración de Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        emeraldSupa: {
+                            500: '#10b981',
+                            600: '#059669',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Estilos CSS personalizados para animaciones, microinteracciones y detalles -->
+    <style>
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        /* Animación suave de entrada */
+        @keyframes slideFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-card {
+            animation: slideFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Personalización de scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- ===================================================================== -->
+    <!-- BARRA DE NAVEGACIÓN SUPERIOR                                          -->
+    <!-- ===================================================================== -->
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-16 py-2.5 sm:py-0 flex items-center justify-between gap-3">
+            <!-- Identidad del Portal -->
+            <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
+                <div class="truncate">
+                    <h1 class="text-sm sm:text-lg font-bold text-slate-900 truncate leading-tight">Gestor de Capacitaciones</h1>
+                    <p class="text-[10px] sm:text-[11px] text-slate-500 truncate">Supabase REST API • <code class="font-mono text-indigo-600">capacitaciones</code></p>
+                </div>
+            </div>
+
+            <!-- Estado de conexión y botones de acción -->
+            <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+                <div id="connection-badge" class="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                    <span id="connection-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="connection-text">Conectando...</span>
+                </div>
+
+                <button id="btn-new-record" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-medium transition-colors shadow-sm">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    <span class="hidden xs:inline sm:inline">Nueva</span>
+                    <span class="hidden md:inline">Capacitación</span>
+                </button>
+
+                <button id="btn-refresh" type="button" aria-label="Sincronizar datos" class="inline-flex items-center justify-center gap-1.5 px-3 sm:px-3.5 py-2.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-medium transition-colors shadow-sm">
+                    <svg id="refresh-icon" class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    <span class="hidden sm:inline">Sincronizar</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===================================================================== -->
+    <!-- CONTENIDO PRINCIPAL                                                   -->
+    <!-- ===================================================================== -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6">
+
+        <!-- Tarjetas de Resumen / Métricas -->
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Total de Registros</p>
+                    <p id="stat-total" class="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">—</p>
+                </div>
+                <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Resultados Filtrados</p>
+                    <p id="stat-filtered" class="text-2xl sm:text-3xl font-bold text-indigo-600 mt-1">—</p>
+                </div>
+                <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+                <div class="min-w-0 pr-2">
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-400">Última Consulta</p>
+                    <p id="stat-time" class="text-base sm:text-lg font-semibold text-slate-800 mt-1.5 truncate">Pendiente...</p>
+                </div>
+                <div class="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+            </div>
+        </section>
+
+        <!-- Barra de Herramientas: Búsqueda + Selector de Vista -->
+        <section class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <!-- Campo de búsqueda en tiempo real -->
+            <div class="relative flex-1">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input
+                    id="search-input"
+                    type="text"
+                    placeholder="Buscar por cualquier campo (título, descripción, fecha, ID...)"
+                    class="w-full pl-10 pr-9 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                >
+                <button id="btn-clear-search" type="button" aria-label="Limpiar búsqueda" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Botones de cambio de vista -->
+            <div class="grid grid-cols-2 sm:flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+                <button id="view-cards-btn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                    <span>Tarjetas</span>
+                </button>
+                <button id="view-table-btn" type="button" class="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Tabla</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Estado de Carga (Skeletons) -->
+        <section id="loading-state" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 animate-pulse space-y-4">
+                <div class="h-4 w-20 bg-slate-200 rounded-full"></div>
+                <div class="h-6 w-3/4 bg-slate-200 rounded-lg"></div>
+                <div class="h-16 w-full bg-slate-100 rounded-xl"></div>
+                <div class="h-9 w-full bg-slate-200 rounded-xl"></div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 animate-pulse space-y-4 hidden md:block">
+                <div class="h-4 w-20 bg-slate-200 rounded-full"></div>
+                <div class="h-6 w-3/4 bg-slate-200 rounded-lg"></div>
+                <div class="h-16 w-full bg-slate-100 rounded-xl"></div>
+                <div class="h-9 w-full bg-slate-200 rounded-xl"></div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 animate-pulse space-y-4 hidden lg:block">
+                <div class="h-4 w-20 bg-slate-200 rounded-full"></div>
+                <div class="h-6 w-3/4 bg-slate-200 rounded-lg"></div>
+                <div class="h-16 w-full bg-slate-100 rounded-xl"></div>
+                <div class="h-9 w-full bg-slate-200 rounded-xl"></div>
+            </div>
+        </section>
+
+        <!-- Estado de Error -->
+        <section id="error-state" class="hidden rounded-2xl bg-red-50 border border-red-200 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-red-900">Error al consultar la base de datos Supabase</h3>
+                    <p id="error-message" class="text-xs text-red-700 mt-1 font-mono"></p>
+                </div>
+            </div>
+            <button type="button" onclick="fetchCapacitaciones()" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors shrink-0">
+                Reintentar consulta
+            </button>
+        </section>
+
+        <!-- Estado Vacío -->
+        <section id="empty-state" class="hidden bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+            </div>
+            <h3 id="empty-title" class="text-base font-bold text-slate-800">No se encontraron capacitaciones</h3>
+            <p id="empty-subtitle" class="text-sm text-slate-500 max-w-md mx-auto">La tabla <code class="font-mono text-indigo-600">capacitaciones</code> no devolvió filas o ninguna coincide con tu búsqueda.</p>
+        </section>
+
+        <!-- Contenedor Vista Tarjetas -->
+        <section id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></section>
+
+        <!-- Contenedor Vista Tabla Responsiva -->
+        <section id="table-container" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+                    <thead id="table-head" class="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500"></thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 bg-white"></tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL DETALLE DE REGISTRO Y JSON CRUDO                                -->
+    <!-- ===================================================================== -->
+    <div id="detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-card">
+            <!-- Cabecera del Modal -->
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4 bg-slate-50">
+                <div>
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-indigo-600">Detalle del Registro</span>
+                    <h2 id="modal-title" class="text-lg font-bold text-slate-900">Capacitación</h2>
+                </div>
+                <button id="btn-close-modal" type="button" aria-label="Cerrar ventana" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Cuerpo del Modal -->
+            <div class="p-6 overflow-y-auto space-y-6">
+                <!-- Lista clave-valor de todas las columnas -->
+                <div>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Columnas y Valores</h3>
+                    <dl id="modal-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></dl>
+                </div>
+
+                <!-- Bloque JSON sin procesar -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Objeto JSON Original</h3>
+                        <button id="btn-copy-json" type="button" class="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                            Copiar JSON
+                        </button>
+                    </div>
+                    <pre id="modal-json" class="p-4 rounded-xl bg-slate-900 text-emerald-400 font-mono text-xs overflow-x-auto leading-relaxed"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL CREAR / EDITAR REGISTRO (POST & PATCH)                          -->
+    <!-- ===================================================================== -->
+    <div id="crud-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-card">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between gap-4 bg-slate-50">
+                <div>
+                    <span id="crud-modal-badge" class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">POST • Nuevo Registro</span>
+                    <h2 id="crud-modal-title" class="text-lg font-bold text-slate-900">Nueva Capacitación</h2>
+                </div>
+                <button id="btn-close-crud" type="button" aria-label="Cerrar formulario" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/70 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="crud-form" class="p-6 overflow-y-auto space-y-4">
+                <div id="crud-dynamic-fields" class="space-y-4"></div>
+
+                <!-- Opción para añadir un campo personalizado si la tabla aún está vacía -->
+                <div class="pt-3 border-t border-slate-100">
+                    <button id="btn-add-custom-field" type="button" class="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                        <span>Añadir columna adicional</span>
+                    </button>
+                </div>
+
+                <div id="crud-form-error" class="hidden rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700 font-mono"></div>
+
+                <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+                    <button id="btn-cancel-crud" type="button" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-medium transition-colors">
+                        Cancelar
+                    </button>
+                    <button id="btn-submit-crud" type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-semibold transition-colors shadow-sm">
+                        Guardar en Supabase
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL CONFIRMACIÓN DE ELIMINACIÓN (DELETE)                            -->
+    <!-- ===================================================================== -->
+    <div id="delete-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-4 animate-card">
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">¿Eliminar esta capacitación?</h3>
+                    <p id="delete-modal-desc" class="text-xs text-slate-600 mt-1 leading-relaxed">
+                        Esta acción ejecutará una petición <code class="font-mono text-red-600">DELETE</code> permanente en Supabase y no se puede deshacer.
+                    </p>
+                </div>
+            </div>
+
+            <div id="delete-error" class="hidden rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-700 font-mono"></div>
+
+            <div class="pt-2 flex items-center justify-end gap-2.5">
+                <button id="btn-cancel-delete" type="button" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-colors">
+                    Cancelar
+                </button>
+                <button id="btn-confirm-delete" type="button" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-colors shadow-sm">
+                    Sí, eliminar registro
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificación flotante (Toast) -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 z-50 hidden items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900 text-white text-xs sm:text-sm font-medium shadow-xl border border-slate-700 animate-card">
+        <span id="toast-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="toast-message">Operación completada</span>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PIE DE PÁGINA                                                         -->
+    <!-- ===================================================================== -->
+    <footer class="border-t border-slate-200 bg-white py-5 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p>Endpoint activo: <code class="font-mono text-slate-700">https://sucjwwsvvaiwajercure.supabase.co/rest/v1/capacitaciones</code></p>
+            <p id="footer-copy-feedback" class="text-emerald-600 font-medium opacity-0 transition-opacity">¡JSON copiado al portapapeles!</p>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- LÓGICA JAVASCRIPT DE CONEXIÓN A SUPABASE Y RENDERIZADO                -->
+    <!-- ===================================================================== -->
+    <script>
+        // 1. Configuración exacta de tu endpoint y credenciales de Supabase
+        const SUPABASE_BASE_URL = 'https://sucjwwsvvaiwajercure.supabase.co/rest/v1/capacitaciones';
+        const SUPABASE_ENDPOINT = `${SUPABASE_BASE_URL}?select=*`;
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1Y2p3d3N2dmFpd2FqZXJjdXJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0OTU5NzQsImV4cCI6MjExMDA3MTk3NH0.VuJNXFq2LSHX5MKgFoS1gMWrHrD8WZTW_3rzDiO2-90';
+
+        // Estado global de la aplicación
+        let allRows = [];
+        let filteredRows = [];
+        let currentView = 'cards'; // 'cards' | 'table'
+        let activeModalItem = null;
+        let editingRow = null;
+        let deletingRow = null;
+
+        // Referencias DOM
+        const connectionBadge = document.getElementById('connection-badge');
+        const connectionDot = document.getElementById('connection-dot');
+        const connectionText = document.getElementById('connection-text');
+        const btnNewRecord = document.getElementById('btn-new-record');
+        const btnRefresh = document.getElementById('btn-refresh');
+        const refreshIcon = document.getElementById('refresh-icon');
+
+        const statTotal = document.getElementById('stat-total');
+        const statFiltered = document.getElementById('stat-filtered');
+        const statTime = document.getElementById('stat-time');
+
+        const searchInput = document.getElementById('search-input');
+        const btnClearSearch = document.getElementById('btn-clear-search');
+        const viewCardsBtn = document.getElementById('view-cards-btn');
+        const viewTableBtn = document.getElementById('view-table-btn');
+
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+        const errorMessage = document.getElementById('error-message');
+        const emptyState = document.getElementById('empty-state');
+        const emptyTitle = document.getElementById('empty-title');
+        const emptySubtitle = document.getElementById('empty-subtitle');
+
+        const cardsContainer = document.getElementById('cards-container');
+        const tableContainer = document.getElementById('table-container');
+        const tableHead = document.getElementById('table-head');
+        const tableBody = document.getElementById('table-body');
+
+        const detailModal = document.getElementById('detail-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalFields = document.getElementById('modal-fields');
+        const modalJson = document.getElementById('modal-json');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCopyJson = document.getElementById('btn-copy-json');
+
+        // Referencias DOM CRUD (Crear / Editar / Eliminar)
+        const crudModal = document.getElementById('crud-modal');
+        const crudModalBadge = document.getElementById('crud-modal-badge');
+        const crudModalTitle = document.getElementById('crud-modal-title');
+        const crudForm = document.getElementById('crud-form');
+        const crudDynamicFields = document.getElementById('crud-dynamic-fields');
+        const crudFormError = document.getElementById('crud-form-error');
+        const btnCloseCrud = document.getElementById('btn-close-crud');
+        const btnCancelCrud = document.getElementById('btn-cancel-crud');
+        const btnSubmitCrud = document.getElementById('btn-submit-crud');
+        const btnAddCustomField = document.getElementById('btn-add-custom-field');
+
+        const deleteModal = document.getElementById('delete-modal');
+        const deleteModalDesc = document.getElementById('delete-modal-desc');
+        const deleteError = document.getElementById('delete-error');
+        const btnCancelDelete = document.getElementById('btn-cancel-delete');
+        const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+
+        const toastNotification = document.getElementById('toast-notification');
+        const toastDot = document.getElementById('toast-dot');
+        const toastMessage = document.getElementById('toast-message');
+        let toastTimer = null;
+
+        function showToast(msg, isError = false) {
+            toastMessage.textContent = msg;
+            toastDot.className = `w-2 h-2 rounded-full ${isError ? 'bg-red-400' : 'bg-emerald-400'}`;
+            toastNotification.classList.remove('hidden');
+            toastNotification.classList.add('flex');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toastNotification.classList.add('hidden');
+                toastNotification.classList.remove('flex');
+            }, 3200);
+        }
+
+        // Utilidad para sanitizar texto antes de inyectar en HTML
+        function escapeHTML(value) {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'object') return JSON.stringify(value);
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Formatea el nombre de una columna (ej. "fecha_inicio" -> "Fecha Inicio")
+        function formatColumnLabel(key) {
+            return key
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, letter => letter.toUpperCase());
+        }
+
+        // Actualiza el indicador visual del estado de conexión
+        function setConnectionStatus(status, label) {
+            connectionText.textContent = label;
+            connectionDot.className = 'w-2 h-2 rounded-full';
+            if (status === 'loading') {
+                connectionDot.classList.add('bg-amber-400', 'animate-pulse');
+                refreshIcon.classList.add('animate-spin');
+            } else if (status === 'ok') {
+                connectionDot.classList.add('bg-emerald-500');
+                refreshIcon.classList.remove('animate-spin');
+            } else {
+                connectionDot.classList.add('bg-red-500');
+                refreshIcon.classList.remove('animate-spin');
+            }
+        }
+
+        // Consulta principal a Supabase REST API (Read all rows)
+        async function fetchCapacitaciones() {
+            setConnectionStatus('loading', 'Consultando Supabase...');
+            loadingState.classList.remove('hidden');
+            errorState.classList.add('hidden');
+            emptyState.classList.add('hidden');
+            cardsContainer.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            try {
+                const response = await fetch(SUPABASE_ENDPOINT, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errBody = await response.text();
+                    throw new Error(`HTTP ${response.status} (${response.statusText}) ${errBody ? '- ' + errBody : ''}`);
+                }
+
+                const data = await response.json();
+                allRows = Array.isArray(data) ? data : [];
+
+                const now = new Date();
+                statTime.textContent = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                statTotal.textContent = allRows.length;
+
+                setConnectionStatus('ok', 'Conectado a Supabase');
+                loadingState.classList.add('hidden');
+
+                applyFilterAndRender();
+            } catch (error) {
+                console.error('Error Supabase:', error);
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                errorMessage.textContent = error.message || 'Error de red o permisos CORS/RLS.';
+                statTotal.textContent = '0';
+                statFiltered.textContent = '0';
+                setConnectionStatus('error', 'Error de conexión');
+            }
+        }
+
+        // Filtra las filas según el buscador y renderiza la vista activa
+        function applyFilterAndRender() {
+            const term = searchInput.value.trim().toLowerCase();
+            btnClearSearch.classList.toggle('hidden', term.length === 0);
+
+            if (!term) {
+                filteredRows = [...allRows];
+            } else {
+                filteredRows = allRows.filter(row =>
+                    Object.values(row).some(val =>
+                        val !== null &&
+                        val !== undefined &&
+                        String(typeof val === 'object' ? JSON.stringify(val) : val)
+                            .toLowerCase()
+                            .includes(term)
+                    )
+                );
+            }
+
+            statFiltered.textContent = filteredRows.length;
+
+            if (filteredRows.length === 0) {
+                cardsContainer.classList.add('hidden');
+                tableContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+
+                if (allRows.length === 0) {
+                    emptyTitle.textContent = 'La tabla capacitaciones está vacía';
+                    emptySubtitle.textContent = 'La conexión con Supabase fue exitosa (200 OK), pero aún no hay registros insertados en la tabla.';
+                } else {
+                    emptyTitle.textContent = 'Sin coincidencias para tu búsqueda';
+                    emptySubtitle.textContent = `No se encontraron registros que contengan "${searchInput.value}".`;
+                }
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            if (currentView === 'cards') {
+                tableContainer.classList.add('hidden');
+                cardsContainer.classList.remove('hidden');
+                renderCards(filteredRows);
+            } else {
+                cardsContainer.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+                renderTable(filteredRows);
+            }
+        }
+
+        // Renderiza las filas en formato de tarjetas adaptativas
+        function renderCards(rows) {
+            cardsContainer.innerHTML = '';
+
+            rows.forEach((row, index) => {
+                const keys = Object.keys(row);
+                // Detecta dinámicamente el nombre/título de la capacitación
+                const titleKey = keys.find(k =>
+                    ['nombre', 'titulo', 'capacitacion', 'nombre_capacitacion', 'curso', 'tema', 'title', 'name'].includes(k.toLowerCase())
+                ) || keys.find(k => typeof row[k] === 'string' && !['id', 'created_at', 'updated_at', 'fecha'].includes(k.toLowerCase()));
+
+                const descKey = keys.find(k =>
+                    k !== titleKey && ['descripcion', 'detalle', 'resumen', 'contenido', 'observaciones', 'description'].includes(k.toLowerCase())
+                );
+
+                const categoryKey = keys.find(k =>
+                    k !== titleKey && ['categoria', 'modalidad', 'area', 'tipo', 'nivel', 'estado'].includes(k.toLowerCase())
+                );
+
+                const titleValue = titleKey && row[titleKey]
+                    ? String(row[titleKey])
+                    : 'Capacitación sin nombre';
+
+                const descValue = descKey && row[descKey]
+                    ? String(row[descKey])
+                    : null;
+
+                const badgeValue = categoryKey && row[categoryKey]
+                    ? String(row[categoryKey])
+                    : 'Capacitación';
+
+                // Selecciona hasta 4 campos adicionales (excluyendo id, título, descripción y categoría)
+                const excludedKeys = new Set([titleKey, descKey, categoryKey, 'id', 'created_at', 'updated_at']);
+                const metaKeys = keys
+                    .filter(k => !excludedKeys.has(k) && row[k] !== null && row[k] !== '')
+                    .slice(0, 4);
+
+                const card = document.createElement('article');
+                card.className = 'bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between animate-card min-w-0';
+                card.style.animationDelay = `${Math.min(index * 0.04, 0.4)}s`;
+
+                const metaHTML = metaKeys.map(k => `
+                    <div class="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-slate-100 last:border-none">
+                        <span class="text-slate-400 font-medium shrink-0">${escapeHTML(formatColumnLabel(k))}</span>
+                        <span class="text-slate-700 font-semibold text-right truncate max-w-[62%]">${escapeHTML(row[k])}</span>
+                    </div>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="min-w-0">
+                        <div class="flex items-center justify-between gap-2 mb-2.5">
+                            <span class="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] font-semibold truncate max-w-full">
+                                ${escapeHTML(badgeValue)}
+                            </span>
+                        </div>
+
+                        <h3 class="text-base sm:text-lg font-bold text-slate-900 leading-snug break-words mb-2">
+                            ${escapeHTML(titleValue)}
+                        </h3>
+
+                        ${descValue ? `<p class="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3 mb-4">${escapeHTML(descValue)}</p>` : ''}
+
+                        ${metaHTML ? `<div class="mt-3 pt-2 border-t border-slate-100">${metaHTML}</div>` : ''}
+                    </div>
+
+                    <div class="mt-5 pt-3 border-t border-slate-100 flex items-center gap-2">
+                        <button type="button" class="btn-open-detail flex-1 py-2.5 sm:py-2 px-3 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white text-xs font-semibold transition-colors">
+                            Ver ficha
+                        </button>
+                        <button type="button" title="Editar registro" aria-label="Editar capacitación" class="btn-edit-card p-2.5 sm:p-2 rounded-xl bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white transition-colors shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                        </button>
+                        <button type="button" title="Eliminar registro" aria-label="Eliminar capacitación" class="btn-delete-card p-2.5 sm:p-2 rounded-xl bg-red-50 hover:bg-red-600 text-red-600 hover:text-white transition-colors shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+
+                card.querySelector('.btn-open-detail').addEventListener('click', () => openDetailModal(row, titleValue));
+                card.querySelector('.btn-edit-card').addEventListener('click', () => openCrudModal(row));
+                card.querySelector('.btn-delete-card').addEventListener('click', () => openDeleteModal(row, titleValue));
+                cardsContainer.appendChild(card);
+            });
+        }
+
+        // Renderiza las filas en formato de tabla dinámica
+        function renderTable(rows) {
+            // Obtiene todas las columnas únicas presentes en los registros
+            const columns = Array.from(new Set(rows.flatMap(r => Object.keys(r))));
+
+            tableHead.innerHTML = `
+                <tr>
+                    ${columns.map(col => `<th scope="col" class="px-4 py-3.5 whitespace-nowrap">${escapeHTML(formatColumnLabel(col))}</th>`).join('')}
+                    <th scope="col" class="px-4 py-3.5 text-right whitespace-nowrap">Acción</th>
+                </tr>
+            `;
+
+            tableBody.innerHTML = '';
+            rows.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/90 transition-colors';
+
+                const cellsHTML = columns.map(col => {
+                    const val = row[col];
+                    const display = val === null || val === undefined
+                        ? '<span class="text-slate-300 italic">null</span>'
+                        : escapeHTML(val);
+                    return `<td class="px-4 py-3.5 text-slate-700 max-w-xs truncate">${display}</td>`;
+                }).join('');
+
+                tr.innerHTML = `
+                    ${cellsHTML}
+                    <td class="px-4 py-3.5 text-right whitespace-nowrap space-x-1.5">
+                        <button type="button" class="btn-row-detail px-2.5 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white text-xs font-semibold transition-colors">
+                            Ver
+                        </button>
+                        <button type="button" class="btn-row-edit px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white text-xs font-semibold transition-colors">
+                            Editar
+                        </button>
+                        <button type="button" class="btn-row-delete px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-600 text-red-600 hover:text-white text-xs font-semibold transition-colors">
+                            Eliminar
+                        </button>
+                    </td>
+                `;
+
+                tr.querySelector('.btn-row-detail').addEventListener('click', () => {
+                    openDetailModal(row, `Registro #${row.id ?? idx + 1}`);
+                });
+                tr.querySelector('.btn-row-edit').addEventListener('click', () => {
+                    openCrudModal(row);
+                });
+                tr.querySelector('.btn-row-delete').addEventListener('click', () => {
+                    openDeleteModal(row, `Registro #${row.id ?? idx + 1}`);
+                });
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // =====================================================================
+        // OPERACIONES CREATE (POST), UPDATE (PATCH) Y DELETE EN SUPABASE
+        // =====================================================================
+
+        // Detecta las columnas editables de la tabla (excluyendo id y timestamps automáticos)
+        function getEditableColumns(row = null) {
+            const ignored = new Set(['id', 'created_at', 'updated_at']);
+            const detected = new Set();
+
+            if (row) {
+                Object.keys(row).forEach(k => { if (!ignored.has(k)) detected.add(k); });
+            }
+            allRows.forEach(r => {
+                Object.keys(r).forEach(k => { if (!ignored.has(k)) detected.add(k); });
+            });
+
+            // Si la tabla está completamente vacía, sugerimos campos estándar comunes
+            if (detected.size === 0) {
+                ['titulo', 'descripcion', 'fecha', 'duracion', 'cupos'].forEach(k => detected.add(k));
+            }
+            return Array.from(detected);
+        }
+
+        function createFieldRow(key, value = '', isCustom = false) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'crud-field-item space-y-1';
+
+            const strVal = value === null || value === undefined
+                ? ''
+                : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+
+            const isLongText = key.toLowerCase().includes('desc') || key.toLowerCase().includes('detalle') || strVal.length > 70;
+
+            if (isCustom) {
+                wrapper.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <input type="text" placeholder="nombre_columna" class="crud-custom-key w-1/3 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs text-slate-800 focus:outline-none focus:border-indigo-500" required>
+                        <input type="text" placeholder="Valor del campo" class="crud-custom-val flex-1 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-800 focus:outline-none focus:border-indigo-500">
+                        <button type="button" class="btn-remove-field p-2 text-slate-400 hover:text-red-600" title="Quitar campo">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                wrapper.querySelector('.btn-remove-field').addEventListener('click', () => wrapper.remove());
+            } else {
+                const labelHTML = `<label class="block text-xs font-semibold text-slate-700">${escapeHTML(formatColumnLabel(key))} <span class="font-mono font-normal text-slate-400">(${escapeHTML(key)})</span></label>`;
+                const inputHTML = isLongText
+                    ? `<textarea data-col="${escapeHTML(key)}" rows="3" class="crud-input w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 focus:outline-none focus:bg-white focus:border-indigo-500">${escapeHTML(strVal)}</textarea>`
+                    : `<input type="text" data-col="${escapeHTML(key)}" value="${escapeHTML(strVal)}" class="crud-input w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 focus:outline-none focus:bg-white focus:border-indigo-500">`;
+                wrapper.innerHTML = labelHTML + inputHTML;
+            }
+            return wrapper;
+        }
+
+        function openCrudModal(row = null) {
+            editingRow = row;
+            crudFormError.classList.add('hidden');
+            crudDynamicFields.innerHTML = '';
+
+            if (row) {
+                crudModalBadge.textContent = `PATCH • Editando ID: ${row.id ?? 'N/A'}`;
+                crudModalBadge.className = 'text-[11px] font-semibold uppercase tracking-wider text-amber-600';
+                crudModalTitle.textContent = 'Editar Capacitación';
+                btnSubmitCrud.textContent = 'Actualizar Registro';
+            } else {
+                crudModalBadge.textContent = 'POST • Nuevo Registro';
+                crudModalBadge.className = 'text-[11px] font-semibold uppercase tracking-wider text-emerald-600';
+                crudModalTitle.textContent = 'Nueva Capacitación';
+                btnSubmitCrud.textContent = 'Crear en Supabase';
+            }
+
+            const cols = getEditableColumns(row);
+            cols.forEach(col => {
+                const initialVal = row ? row[col] : '';
+                crudDynamicFields.appendChild(createFieldRow(col, initialVal, false));
+            });
+
+            crudModal.classList.remove('hidden');
+            crudModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCrudModal() {
+            crudModal.classList.add('hidden');
+            crudModal.classList.remove('flex');
+            document.body.style.overflow = '';
+            editingRow = null;
+        }
+
+        // Convierte valores numéricos o booleanos cuando corresponde según el registro previo
+        function parseSmartValue(rawVal, referenceVal) {
+            const trimmed = rawVal.trim();
+            if (trimmed === '') return null;
+            if (typeof referenceVal === 'number') {
+                const num = Number(trimmed);
+                return Number.isNaN(num) ? trimmed : num;
+            }
+            if (typeof referenceVal === 'boolean') {
+                if (trimmed.toLowerCase() === 'true') return true;
+                if (trimmed.toLowerCase() === 'false') return false;
+            }
+            if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+                return Number(trimmed);
+            }
+            return trimmed;
+        }
+
+        crudForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            crudFormError.classList.add('hidden');
+            btnSubmitCrud.disabled = true;
+            const originalText = btnSubmitCrud.textContent;
+            btnSubmitCrud.textContent = 'Guardando...';
+
+            const payload = {};
+
+            // Campos estándar detectados
+            crudDynamicFields.querySelectorAll('.crud-input').forEach(input => {
+                const col = input.getAttribute('data-col');
+                const refVal = editingRow ? editingRow[col] : undefined;
+                payload[col] = parseSmartValue(input.value, refVal);
+            });
+
+            // Campos personalizados añadidos manualmente
+            crudDynamicFields.querySelectorAll('.crud-custom-key').forEach(keyInput => {
+                const colName = keyInput.value.trim();
+                const valInput = keyInput.parentElement.querySelector('.crud-custom-val');
+                if (colName) {
+                    payload[colName] = parseSmartValue(valInput.value, undefined);
+                }
+            });
+
+            try {
+                const isEdit = Boolean(editingRow && editingRow.id !== undefined && editingRow.id !== null);
+                const url = isEdit
+                    ? `${SUPABASE_BASE_URL}?id=eq.${encodeURIComponent(editingRow.id)}`
+                    : SUPABASE_BASE_URL;
+                const method = isEdit ? 'PATCH' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText || response.statusText}`);
+                }
+
+                closeCrudModal();
+                showToast(isEdit ? 'Capacitación actualizada correctamente' : 'Nueva capacitación creada con éxito');
+                await fetchCapacitaciones();
+            } catch (err) {
+                crudFormError.textContent = err.message || 'No se pudo guardar el registro. Verifica las políticas RLS en Supabase.';
+                crudFormError.classList.remove('hidden');
+            } finally {
+                btnSubmitCrud.disabled = false;
+                btnSubmitCrud.textContent = originalText;
+            }
+        });
+
+        // Modal de Confirmación de Eliminación (DELETE)
+        function openDeleteModal(row, label) {
+            deletingRow = row;
+            deleteError.classList.add('hidden');
+            deleteModalDesc.innerHTML = `Vas a eliminar <strong>${escapeHTML(label)}</strong> (ID: <code class="font-mono">${escapeHTML(row.id)}</code>). Esta operación ejecutará <code class="font-mono text-red-600">DELETE</code> en Supabase.`;
+            deleteModal.classList.remove('hidden');
+            deleteModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDeleteModal() {
+            deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
+            document.body.style.overflow = '';
+            deletingRow = null;
+        }
+
+        btnConfirmDelete.addEventListener('click', async () => {
+            if (!deletingRow || deletingRow.id === undefined || deletingRow.id === null) {
+                deleteError.textContent = 'Este registro no posee una columna "id" válida para eliminar.';
+                deleteError.classList.remove('hidden');
+                return;
+            }
+
+            btnConfirmDelete.disabled = true;
+            btnConfirmDelete.textContent = 'Eliminando...';
+            deleteError.classList.add('hidden');
+
+            try {
+                const url = `${SUPABASE_BASE_URL}?id=eq.${encodeURIComponent(deletingRow.id)}`;
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Prefer': 'return=representation'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errText || response.statusText}`);
+                }
+
+                closeDeleteModal();
+                showToast('Registro eliminado de Supabase');
+                await fetchCapacitaciones();
+            } catch (err) {
+                deleteError.textContent = err.message || 'Error al eliminar. Verifica los permisos DELETE en Supabase.';
+                deleteError.classList.remove('hidden');
+            } finally {
+                btnConfirmDelete.disabled = false;
+                btnConfirmDelete.textContent = 'Sí, eliminar registro';
+            }
+        });
+
+        // Abre el modal con todas las columnas y el JSON crudo
+        function openDetailModal(row, title) {
+            activeModalItem = row;
+            modalTitle.textContent = title;
+            modalFields.innerHTML = '';
+
+            Object.entries(row).forEach(([key, value]) => {
+                const div = document.createElement('div');
+                div.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200/80';
+                div.innerHTML = `
+                    <dt class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">${escapeHTML(formatColumnLabel(key))}</dt>
+                    <dd class="text-sm font-medium text-slate-800 mt-1 break-words">${
+                        value === null || value === undefined
+                            ? '<span class="text-slate-400 italic">Sin valor (null)</span>'
+                            : escapeHTML(value)
+                    }</dd>
+                `;
+                modalFields.appendChild(div);
+            });
+
+            modalJson.textContent = JSON.stringify(row, null, 2);
+            detailModal.classList.remove('hidden');
+            detailModal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDetailModal() {
+            detailModal.classList.add('hidden');
+            detailModal.classList.remove('flex');
+            document.body.style.overflow = '';
+        }
+
+        // Eventos de UI
+        btnNewRecord.addEventListener('click', () => openCrudModal(null));
+        btnAddCustomField.addEventListener('click', () => {
+            crudDynamicFields.appendChild(createFieldRow('', '', true));
+        });
+        btnCloseCrud.addEventListener('click', closeCrudModal);
+        btnCancelCrud.addEventListener('click', closeCrudModal);
+        crudModal.addEventListener('click', (e) => { if (e.target === crudModal) closeCrudModal(); });
+
+        btnCancelDelete.addEventListener('click', closeDeleteModal);
+        deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+
+        btnRefresh.addEventListener('click', fetchCapacitaciones);
+
+        searchInput.addEventListener('input', applyFilterAndRender);
+        btnClearSearch.addEventListener('click', () => {
+            searchInput.value = '';
+            applyFilterAndRender();
+            searchInput.focus();
+        });
+
+        viewCardsBtn.addEventListener('click', () => {
+            currentView = 'cards';
+            viewCardsBtn.className = 'inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all';
+            viewTableBtn.className = 'inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+            applyFilterAndRender();
+        });
+
+        viewTableBtn.addEventListener('click', () => {
+            currentView = 'table';
+            viewTableBtn.className = 'inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all';
+            viewCardsBtn.className = 'inline-flex items-center justify-center gap-1.5 px-3 py-2.5 sm:py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+            applyFilterAndRender();
+        });
+
+        viewTableBtn.addEventListener('click', () => {
+            currentView = 'table';
+            viewTableBtn.className = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-white text-slate-900 shadow-sm transition-all';
+            viewCardsBtn.className = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+            applyFilterAndRender();
+        });
+
+        btnCloseModal.addEventListener('click', closeDetailModal);
+        detailModal.addEventListener('click', (e) => {
+            if (e.target === detailModal) closeDetailModal();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (!detailModal.classList.contains('hidden')) closeDetailModal();
+                if (!crudModal.classList.contains('hidden')) closeCrudModal();
+                if (!deleteModal.classList.contains('hidden')) closeDeleteModal();
+            }
+        });
+
+        btnCopyJson.addEventListener('click', () => {
+            if (!activeModalItem) return;
+            const textarea = document.createElement('textarea');
+            textarea.value = JSON.stringify(activeModalItem, null, 2);
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            const feedback = document.getElementById('footer-copy-feedback');
+            btnCopyJson.textContent = '¡Copiado!';
+            feedback.classList.remove('opacity-0');
+            setTimeout(() => {
+                btnCopyJson.textContent = 'Copiar JSON';
+                feedback.classList.add('opacity-0');
+            }, 2000);
+        });
+
+        // Iniciar la consulta al cargar la página
+        document.addEventListener('DOMContentLoaded', fetchCapacitaciones);
+    </script>
+</body>
+</html>
